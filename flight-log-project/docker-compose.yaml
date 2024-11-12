@@ -1,0 +1,5 @@
+services:
+  flight-log:
+    image: "gitlab.fit.cvut.cz:5050/bykowola/bie-ido-3:master"
+    ports:
+      - "8000:8081"

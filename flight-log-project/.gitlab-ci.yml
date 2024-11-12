@@ -1,0 +1,71 @@
+stages:
+  - compile
+  - test
+  - build
+  - package
+
+.setup-mvn: &setup-mvn
+  - chmod a+x mvnw
+
+variables:
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+
+cache:
+  paths:
+    - .m2/repository/
+    - "**/target/"
+
+compile:
+  stage: compile
+  image: ${CI_REGISTRY}/bi-ido/bi-ido-registry/maven:3.8.6-openjdk-18
+  script:
+    - *setup-mvn
+    - ./mvnw clean compile
+
+.test:
+  stage: test
+  image: ${CI_REGISTRY}/bi-ido/bi-ido-registry/markhobson/maven-chrome:jdk-18 # this image as well uses maven 3.8.6
+  script:
+    - *setup-mvn
+    - ./mvnw test
+  artifacts:
+    name: "$TEST_REPORTS_{CI_PROJECT_NAME}_${CI_COMMIT_REF_SLUG}_${CI_COMMIT_SHA}"
+    reports:
+      junit:
+        - "**/target/surefire-reports/TEST-*.xml"
+    expire_in: 1 week
+
+.check:
+  stage: build
+  image: ${CI_REGISTRY}/bi-ido/bi-ido-registry/maven:3.8.6-openjdk-18
+  script:
+    - chmod a+x mvnw
+    - ./mvnw clean compile dependency-check:aggregate
+    - ./mvnw sonar:sonar -Dsonar.projectKey=$SONAR_PROJECT -Dsonar.projectName=$SONAR_PROJECT -Dsonar.host.url=$SONAR_URL -Dsonar.token=$SONAR_TOKEN
+
+
+build:
+  stage: build
+  image: ${CI_REGISTRY}/bi-ido/bi-ido-registry/maven:3.8.6-openjdk-18
+  script:
+    - *setup-mvn
+    - ./mvnw package -DskipTests
+  artifacts:
+    name: "${CI_PROJECT_NAME}_${CI_COMMIT_REF_SLUG}_${CI_COMMIT_SHA}"
+    paths:
+      - "**/target/*.jar"
+    expire_in: 1 week
+
+container:
+  stage: package
+  image: $CI_REGISTRY/ict/images/alpine/ci:latest
+  variables:
+    BUILDAH_ISOLATION: chroot
+    IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  before_script:
+    - apk add --no-cache ca-certificates curl buildah fuse-overlayfs netavark
+    - buildah login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - buildah info
+  script:
+    - buildah build --tag $IMAGE_TAG -f Dockerfile
+    - buildah push --retry 3 $IMAGE_TAG

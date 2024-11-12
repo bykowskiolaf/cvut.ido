@@ -1,0 +1,57 @@
+stages:
+  - compile
+  - test
+  - deploy
+  - final
+
+compile:
+  stage: compile
+  script:
+    - echo "compiling the app"
+
+test2:
+  stage: test
+  script:
+   - echo "Running test2"
+
+test1:
+  stage: test
+  script:
+   - echo "Running test1"
+
+publish:
+  stage: deploy
+  only:
+    - main
+  script:
+    - echo "Publishing docs"
+    - echo Project - $CI_PROJECT_NAME, Message - $CI_COMMIT_MESSAGE > artifact.txt
+  artifacts:
+    paths:
+      - ./artifact.txt
+
+deploy:
+  stage: deploy
+  only:
+    - main
+  when: manual
+  allow_failure: false
+  script:
+    - echo "Deploying the app"
+
+create-tag:
+  stage: final
+  only:
+    - main
+  image: ${CI_REGISTRY}/ict/images/alpine/ci:latest
+
+  before_script:
+    - git config --global user.email "$GITLAB_USER_EMAIL"
+    - git config --global user.name "$GITLAB_USER_NAME"
+
+  script:
+    - echo "Creating tag"
+    - git remote set-url origin https://oauth2:${GIT_ACCESS_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}
+    - git tag -a "1.0.${CI_PIPELINE_IID}" -m "Application release version 1.0.${CI_PIPELINE_IID}"
+    - git push origin 1.0.${CI_PIPELINE_IID}
+

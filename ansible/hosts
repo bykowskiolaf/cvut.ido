@@ -1,0 +1,8 @@
+10.119.71.214
+
+[webservers] 
+10.119.71.214 ansible_become=true
+
+[webservers:vars]
+page_text=Hello from inventory variable.
+

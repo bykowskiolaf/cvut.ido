@@ -1,0 +1,24 @@
+---
+- name: Pull docker image from GL and deploy
+  hosts: webservers
+  vars_prompt:
+    - name: docker_pass
+      prompt: Enter the docker password
+  tasks:
+  - name: Log into private registry
+    docker_login:
+      registry: "gitlab.fit.cvut.cz:5050"
+      username: "bykowola"
+      password: "{{ docker_pass }}"
+  - name: Pull Docker Image
+    docker_image:
+      name: gitlab.fit.cvut.cz:5050/bykowola/bie-ido-3:master
+      source: pull
+  - name: Run Docker Container
+    docker_container:
+      name: flight-log-container
+      image: gitlab.fit.cvut.cz:5050/bykowola/bie-ido-3:master
+      state: started
+      restart_policy: always
+      ports:
+        - "8080:8081"

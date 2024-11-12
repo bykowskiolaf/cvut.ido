@@ -1,0 +1,30 @@
+---
+- name: Install and start Apache
+  hosts: webservers
+  vars:
+    page_title: Made with Ansible
+    page_text: Hello from playbook variable.
+  tasks:
+  - name: apache2 package is present
+    apk:
+      name: apache2
+      state: present
+  - name: apache2 is started
+    service:
+      name: apache2
+      state: started
+      enabled: true
+  - name: Apply page template on {{ ansible_hostname }}
+    template:
+      src: files/index.html.j2
+      dest: /var/www/localhost/htdocs/index.html
+  - name: Copy image
+    copy:
+      src: files/img.png
+      dest: /var/www/localhost/htdocs/img.png
+  - name: Get info on docker host
+    community.docker.docker_host_info:
+    register: result
+  - name: Print result
+    ansible.builtin.debug:
+      var: result.host_info
